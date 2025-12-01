@@ -11,7 +11,6 @@ import random
 import requests
 import shutil
 from cog import Path
-from node import Node
 
 
 class ComfyUI:
@@ -278,15 +277,4 @@ class ComfyUI:
                 shutil.rmtree(directory)
             os.makedirs(directory)
 
-    def convert_lora_loader_nodes(self, workflow):
-        for node_id, node in workflow.items():
-            if node.get("class_type") == "LoraLoader":
-                inputs = node.get("inputs", {})
-                if "lora_name" in inputs and isinstance(inputs["lora_name"], str):
-                    if inputs["lora_name"].startswith(("http://", "https://")):
-                        print(
-                            f"Converting LoraLoader node {node_id} to LoraLoaderFromURL"
-                        )
-                        node["class_type"] = "LoraLoaderFromURL"
-                        node["inputs"]["url"] = inputs["lora_name"]
-                        del node["inputs"]["lora_name"]
+

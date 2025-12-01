@@ -11,9 +11,6 @@ __pycache__
 *.torchscript
 *.webp
 *.engine
-weights.txt
-manifest.txt
-updated_weights.json
-downloaded_user_models/
 .cog
 run_default_workflows.log
+ComfyUI_Example.ipynb
