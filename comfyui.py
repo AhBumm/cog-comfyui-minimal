@@ -67,7 +67,7 @@ class ComfyUI:
                 "http://{}/history/{}".format(self.server_address, "123")
             ) as response:
                 return response.status == 200
-        except URLError:
+        except urllib.error.URLError:
             return False
 
     def is_image_or_video_value(self, value):
