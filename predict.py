@@ -14,7 +14,7 @@ INPUT_DIR = "/tmp/inputs"
 COMFYUI_TEMP_OUTPUT_DIR = "ComfyUI/temp"
 ALL_DIRECTORIES = [OUTPUT_DIR, INPUT_DIR, COMFYUI_TEMP_OUTPUT_DIR]
 
-# Use reset.json as default example workflow if examples directory doesn't exist
+# Use reset.json as fallback if birefnet_api.json file doesn't exist
 try:
     with open("examples/api_workflows/birefnet_api.json", "r") as file:
         EXAMPLE_WORKFLOW_JSON = file.read()

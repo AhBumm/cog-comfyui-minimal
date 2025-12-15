@@ -211,7 +211,7 @@ class ComfyUI:
             try:
                 out = await loop.run_in_executor(None, self.ws.recv)
             except Exception as e:
-                raise Exception(f"Error receiving message from websocket: {e}")
+                raise Exception(f"Error receiving message from websocket: {e}") from e
             
             if isinstance(out, str):
                 message = json.loads(out)
