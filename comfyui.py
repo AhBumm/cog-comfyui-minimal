@@ -10,6 +10,7 @@ import websocket
 import random
 import requests
 import shutil
+import asyncio
 from cog import Path
 
 
@@ -198,6 +199,48 @@ class ComfyUI:
             else:
                 continue
 
+    async def wait_for_prompt_completion_async(self, workflow, prompt_id):
+        """Async version of wait_for_prompt_completion that supports cancellation"""
+        loop = asyncio.get_event_loop()
+        while True:
+            # Check for cancellation
+            await asyncio.sleep(0)  # Yield control to allow cancellation
+            
+            # Receive message in a non-blocking way
+            try:
+                out = await loop.run_in_executor(None, self.ws.recv)
+            except Exception as e:
+                raise Exception(f"Error receiving message from websocket: {e}")
+            
+            if isinstance(out, str):
+                message = json.loads(out)
+
+                if message["type"] == "execution_error":
+                    error_data = message["data"]
+
+                    if (
+                        "exception_message" in error_data
+                        and "Unauthorized: Please login first to use this node" in error_data["exception_message"]
+                    ):
+                        raise Exception("ComfyUI API nodes are not currently supported.")
+
+                    error_message = json.dumps(message, indent=2)
+                    raise Exception(
+                        f"There was an error executing your workflow:\n\n{error_message}"
+                    )
+
+                if message["type"] == "executing":
+                    data = message["data"]
+                    if data["node"] is None and data["prompt_id"] == prompt_id:
+                        break
+                    elif data["prompt_id"] == prompt_id:
+                        node = workflow.get(data["node"], {})
+                        meta = node.get("_meta", {})
+                        class_type = node.get("class_type", "Unknown")
+                        print(
+                            f"Executing node {data['node']}, title: {meta.get('title', 'Unknown')}, class type: {class_type}"
+                        )
+
     def load_workflow(self, workflow):
         if not isinstance(workflow, dict):
             wf = json.loads(workflow)
@@ -237,6 +280,15 @@ class ComfyUI:
         print("Running workflow")
         prompt_id = self.queue_prompt(workflow)
         self.wait_for_prompt_completion(workflow, prompt_id)
+        output_json = self.get_history(prompt_id)
+        print("outputs: ", output_json)
+        print("====================================")
+
+    async def run_workflow_async(self, workflow):
+        """Async version of run_workflow that supports cancellation"""
+        print("Running workflow (async)")
+        prompt_id = self.queue_prompt(workflow)
+        await self.wait_for_prompt_completion_async(workflow, prompt_id)
         output_json = self.get_history(prompt_id)
         print("outputs: ", output_json)
         print("====================================")
