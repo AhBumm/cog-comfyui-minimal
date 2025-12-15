@@ -165,48 +165,49 @@ class ComfyUI:
                 "ComfyUI Error – Your workflow could not be run. Please check the logs for details."
             )
 
+    def _process_websocket_message(self, message, workflow, prompt_id):
+        """Process a websocket message and return True if execution is complete"""
+        if message["type"] == "execution_error":
+            error_data = message["data"]
+
+            if (
+                "exception_message" in error_data
+                and "Unauthorized: Please login first to use this node" in error_data["exception_message"]
+            ):
+                raise Exception("ComfyUI API nodes are not currently supported.")
+
+            error_message = json.dumps(message, indent=2)
+            raise Exception(
+                f"There was an error executing your workflow:\n\n{error_message}"
+            )
+
+        if message["type"] == "executing":
+            data = message["data"]
+            if data["node"] is None and data["prompt_id"] == prompt_id:
+                return True  # Execution complete
+            elif data["prompt_id"] == prompt_id:
+                node = workflow.get(data["node"], {})
+                meta = node.get("_meta", {})
+                class_type = node.get("class_type", "Unknown")
+                print(
+                    f"Executing node {data['node']}, title: {meta.get('title', 'Unknown')}, class type: {class_type}"
+                )
+        
+        return False  # Continue execution
+
     def wait_for_prompt_completion(self, workflow, prompt_id):
         while True:
             out = self.ws.recv()
             if isinstance(out, str):
                 message = json.loads(out)
-
-                if message["type"] == "execution_error":
-                    error_data = message["data"]
-
-                    if (
-                        "exception_message" in error_data
-                        and "Unauthorized: Please login first to use this node" in error_data["exception_message"]
-                    ):
-                        raise Exception("ComfyUI API nodes are not currently supported.")
-
-                    error_message = json.dumps(message, indent=2)
-                    raise Exception(
-                        f"There was an error executing your workflow:\n\n{error_message}"
-                    )
-
-                if message["type"] == "executing":
-                    data = message["data"]
-                    if data["node"] is None and data["prompt_id"] == prompt_id:
-                        break
-                    elif data["prompt_id"] == prompt_id:
-                        node = workflow.get(data["node"], {})
-                        meta = node.get("_meta", {})
-                        class_type = node.get("class_type", "Unknown")
-                        print(
-                            f"Executing node {data['node']}, title: {meta.get('title', 'Unknown')}, class type: {class_type}"
-                        )
-            else:
-                continue
+                if self._process_websocket_message(message, workflow, prompt_id):
+                    break
 
     async def wait_for_prompt_completion_async(self, workflow, prompt_id):
         """Async version of wait_for_prompt_completion that supports cancellation"""
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         while True:
-            # Check for cancellation
-            await asyncio.sleep(0)  # Yield control to allow cancellation
-            
-            # Receive message in a non-blocking way
+            # Receive message in a non-blocking way (cancellation is handled by run_in_executor)
             try:
                 out = await loop.run_in_executor(None, self.ws.recv)
             except Exception as e:
@@ -214,32 +215,8 @@ class ComfyUI:
             
             if isinstance(out, str):
                 message = json.loads(out)
-
-                if message["type"] == "execution_error":
-                    error_data = message["data"]
-
-                    if (
-                        "exception_message" in error_data
-                        and "Unauthorized: Please login first to use this node" in error_data["exception_message"]
-                    ):
-                        raise Exception("ComfyUI API nodes are not currently supported.")
-
-                    error_message = json.dumps(message, indent=2)
-                    raise Exception(
-                        f"There was an error executing your workflow:\n\n{error_message}"
-                    )
-
-                if message["type"] == "executing":
-                    data = message["data"]
-                    if data["node"] is None and data["prompt_id"] == prompt_id:
-                        break
-                    elif data["prompt_id"] == prompt_id:
-                        node = workflow.get(data["node"], {})
-                        meta = node.get("_meta", {})
-                        class_type = node.get("class_type", "Unknown")
-                        print(
-                            f"Executing node {data['node']}, title: {meta.get('title', 'Unknown')}, class type: {class_type}"
-                        )
+                if self._process_websocket_message(message, workflow, prompt_id):
+                    break
 
     def load_workflow(self, workflow):
         if not isinstance(workflow, dict):
