@@ -1,3 +1,5 @@
+os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
+
 import os
 from typing import List
 from cog import BasePredictor, Input, Path
@@ -5,23 +7,15 @@ from comfyui import ComfyUI
 import requests
 import base64
 
-
-os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
-
 OUTPUT_DIR = "/tmp/outputs"
 INPUT_DIR = "/tmp/inputs"
 COMFYUI_TEMP_OUTPUT_DIR = "ComfyUI/temp"
 ALL_DIRECTORIES = [OUTPUT_DIR, INPUT_DIR, COMFYUI_TEMP_OUTPUT_DIR]
 
-with open("examples/api_workflows/birefnet_api.json", "r") as file:
-    EXAMPLE_WORKFLOW_JSON = file.read()
-
-
 class Predictor(BasePredictor):
     def setup(self):
         for directory in ALL_DIRECTORIES:
             os.makedirs(directory, exist_ok=True)
-
         self.comfyUI = ComfyUI("127.0.0.1:8188")
         self.comfyUI.start_server(OUTPUT_DIR, INPUT_DIR)
 
@@ -32,7 +26,7 @@ class Predictor(BasePredictor):
             default="",
         ),
     ) -> List[Path]:
-        """Run a single prediction on the model"""
+        """Run a single prediction on the model (minimal version)"""
         self.comfyUI.cleanup(ALL_DIRECTORIES)
 
         workflow_json_content = workflow_json
@@ -51,10 +45,8 @@ class Predictor(BasePredictor):
             except requests.exceptions.RequestException as e:
                 raise ValueError(f"Failed to download workflow JSON from URL: {e}")
 
-        wf = self.comfyUI.load_workflow(workflow_json_content or EXAMPLE_WORKFLOW_JSON)
-
+        wf = self.comfyUI.load_workflow(workflow_json_content)
         self.comfyUI.connect()
         self.comfyUI.randomise_seeds(wf)
         self.comfyUI.run_workflow(wf)
-
         return self.comfyUI.get_files(OUTPUT_DIR)
