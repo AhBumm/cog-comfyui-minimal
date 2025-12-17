@@ -1,6 +1,8 @@
 ## ================================================= ##
 # cog-comfyui-minimal
-
+```sh
+git clone --recurse-submodules https://github.com/AhBumm/cog-comfyui-minimal.git
+```
 - In This Version of cog-comfyui Removed Must of Unnecessary Detection or Download Codes.
 - Only Receive A Whole Workflows Str or URL as Parameter.
 - You Can Use It as An Startup Example for Custom Workflows Witch Some Weights/Nodes not Support Yeap on Cog-ComfyUI Project
